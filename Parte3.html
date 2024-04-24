@@ -360,22 +360,22 @@ display: none;
 <div id="parte-3" class="section level1">
 <h1>Parte 3</h1>
 <p>Se carga la base de datos correspondiente</p>
-<pre class="r"><code>Y=c(47.83,59.51,50.38,53.24,47.26,50.52)
-Ynames=c(&quot;obs1&quot;,&quot;obs2&quot;,&quot;obs3&quot;,&quot;obs4&quot;,&quot;obs5&quot;,&quot;obs6&quot;)
-names&lt;-c(&quot;b0&quot;, &quot;tasaFlujoGas1&quot;, &quot;tasaFlujoGas2&quot;, &quot;aperturaBoq&quot;, &quot;tempGas&quot;)
+<pre class="r"><code>Y = c(47.83,59.51,50.38,53.24,47.26,50.52)
+Ynames = c(&quot;obs1&quot;,&quot;obs2&quot;,&quot;obs3&quot;,&quot;obs4&quot;,&quot;obs5&quot;,&quot;obs6&quot;)
+names = c(&quot;b0&quot;, &quot;tasaFlujoGas1&quot;, &quot;tasaFlujoGas2&quot;, &quot;aperturaBoq&quot;, &quot;tempGas&quot;)
 
-X=matrix(c(1, 124.17,134.07,23.32,210.11, 
+X = matrix(c(1, 124.17,134.07,23.32,210.11, 
     1,149.46,142.21,41.82,229.67,
     1,131.65,146.62,21.14,231.10,
     1,139.49,136.16,45.79,206.03,
     1,113.03,125.41,41.51,222.67,
     1,134.57,165.84,32.42,219.59),nrow=6,byrow = TRUE,dimnames=list(Ynames,names))
 
-X2 &lt;-data.frame(cbind(Y,X[,-1]))</code></pre>
+X2 = data.frame(cbind(Y,X[,-1]))</code></pre>
 <div id="a.-estime-un-modelo-de-regresión-lineal-con-la-función-lm-para-la-variable-x2." class="section level2">
 <h2><strong>a. Estime un modelo de regresión lineal, con la función lm()
 para la variable X2.</strong></h2>
-<pre class="r"><code>regresion_lineal &lt;- lm(Y ~ ., data = X2)
+<pre class="r"><code>regresion_lineal = lm(Y ~ ., data = X2)
 summary(regresion_lineal)</code></pre>
 <pre><code>## 
 ## Call:
@@ -399,19 +399,277 @@ summary(regresion_lineal)</code></pre>
 ## Multiple R-squared:  0.9867, Adjusted R-squared:  0.9334 
 ## F-statistic: 18.51 on 4 and 1 DF,  p-value: 0.1724</code></pre>
 </div>
+<div id="b.-la-función-lm-estima-la-inversa-de-xtx-con-base-en-el-proceso-de-descomposición-qr-de-gramschmidt-realice-un-breve-descripción-de-este-proceso-y-verifique-usando-la-función-qr.solve-que-los-estimadores-del-resultado-de-la-regresión-lineal-de-punto-a-son-los-mismos." class="section level2">
+<h2><strong>b. La función lm() estima la inversa de XtX con base en el
+proceso de descomposición QR, de Gram–Schmidt, realice un breve
+descripción de este proceso y verifique usando la función qr.solve ()
+que los estimadores del resultado de la regresión lineal de punto a son
+los mismos.</strong></h2>
+<p>El proceso de descomposición QR se desarrolla de la siguiente
+forma:</p>
+<p>Sea <span class="math inline">\(X\)</span> una matriz nxm . Si
+consideramos las m columnas de <span class="math inline">\(X\)</span>,
+denotadas por <span class="math inline">\(x_j\)</span> podemos obtener
+una base ortogonal de vectores unitarios <span class="math inline">\(q_j\)</span> tales que:</p>
+<p>Si <span class="math inline">\(X\)</span> tiene rango completo (es
+decir, sus columnas son linealmente independientes), podemos relacionar
+los vectores <span class="math inline">\(x_j\)</span> y <span class="math inline">\(q_j\)</span> mediante la ecuación</p>
+<p><span class="math inline">\(x_k = r_{1k}q_1 + r_{2k}q_2 + r_{3k}q_3 +
+... + r_{kk}q_k.\)</span>, con k = 1, …,m</p>
+<p>Como los vectores <span class="math inline">\(q_j\)</span> son
+ortogonales, los coeficientes vienen dados por</p>
+<p><span class="math inline">\(rij = q_i*a_j\)</span> con <span class="math inline">\(i \not = j\)</span></p>
+<p>Esto permite escribir</p>
+<p><span class="math inline">\(X = QR\)</span> , donde <span class="math inline">\(Q\)</span> es una matriz nxm que satisface que
+<span class="math inline">\(QQ = I\)</span>. Y, <span class="math inline">\(R\)</span> es una matriz mxm triangular
+superior.</p>
+<p>Si <span class="math inline">\(X\)</span> no tiene rango completo,
+entonces basta con seleccionar <span class="math inline">\(q_k\)</span>
+de manera tal que sea ortogonal a <span class="math inline">\((q_1, . .
+. , q_{k-1})\)</span>. De esta manera también se puede escribir <span class="math inline">\(X = QR\)</span>.</p>
+<p>Finalmente, la inversa de la matriz <span class="math inline">\(X^tX\)</span> se puede calcular mediante la
+descomposición <span class="math inline">\(QR\)</span> de la matriz
+<span class="math inline">\(X\)</span>.</p>
+<p><strong>Verificación usando qr.solve()</strong></p>
+<p>Empleando la función qr.solve se obtiene lo siguiente:</p>
+<pre class="r"><code>QR = qr(X)
+qr.solve(QR, Y)</code></pre>
+<pre><code>##            b0 tasaFlujoGas1 tasaFlujoGas2   aperturaBoq       tempGas 
+##  -10.23386366    0.33540014   -0.07329371    0.08864733    0.11252772</code></pre>
+<p>Como se puede observar, son los mismos valores de beta que brinda la
+función lm en el punto a.</p>
+</div>
 <div id="c.-usando-una-matriz-pseudo-inversa-moonre-penrose-y-según-lo-visto-en-clases-reconstruya-los-valores-de-la-regresión-del-punto-a." class="section level2">
 <h2><strong>c. Usando una matriz pseudo-inversa (Moonre-Penrose) y según
 lo visto en clases, reconstruya los valores de la regresión del punto
 a.</strong></h2>
 <ol style="list-style-type: lower-roman">
-<li>Estimadores</li>
+<li><p><strong><em>Estimadores</em></strong></p>
+<p>Primeramente, se calcula la matriz ortogonal</p></li>
 </ol>
-<p>Primeramente, se calcula la matriz ortogonal</p>
-<pre class="r"><code>X2_matriz &lt;- as.matrix(X2)
-X2TX2 = t(X2_matriz) %*% X2_matriz
-X2TX2I = ginv(X2TX2)</code></pre>
-<p>Después, se obtiene la matriz de proyección o predicción P</p>
-<pre class="r"><code>P= X2_matriz %*% X2TX2I %*% t(X2_matriz)</code></pre>
+<pre class="r"><code>X_matriz = as.matrix(X) 
+XTX = t(X_matriz) %*% X_matriz 
+XTXI = ginv(XTX) 
+XTXI</code></pre>
+<pre><code>##              [,1]          [,2]          [,3]          [,4]          [,5]
+## [1,] 118.13156142 -0.0340693673 -0.1000545541 -0.1742167735 -0.4243787993
+## [2,]  -0.03406937  0.0020325502 -0.0010235978 -0.0010630811 -0.0002401096
+## [3,]  -0.10005455 -0.0010235978  0.0016840371  0.0009228886 -0.0001597012
+## [4,]  -0.17421677 -0.0010630811  0.0009228886  0.0026209996  0.0004267736
+## [5,]  -0.42437880 -0.0002401096 -0.0001597012  0.0004267736  0.0021107277</code></pre>
+<pre><code>La solución de los betas es la siguiente:</code></pre>
+<pre class="r"><code>Betas = XTXI %*% t(X_matriz) %*% Y
+Betas</code></pre>
+<pre><code>##              [,1]
+## [1,] -10.23386366
+## [2,]   0.33540014
+## [3,]  -0.07329371
+## [4,]   0.08864733
+## [5,]   0.11252772</code></pre>
+<pre><code>Los cuales son los mismo que los obtenidos mediante la función lm.</code></pre>
+<ol start="2" style="list-style-type: lower-roman">
+<li><p><strong><em>Std error de los estimadores</em></strong></p>
+<p>Como primer paso, se calcula la matriz de covarianzas</p></li>
+</ol>
+<pre class="r"><code>Var_Betas = vcov(regresion_lineal) 
+Var_Betas</code></pre>
+<pre><code>##                (Intercept) tasaFlujoGas1 tasaFlujoGas2  aperturaBoq
+## (Intercept)   158.75700508 -0.0457858226 -0.1344633150 -0.234129921
+## tasaFlujoGas1  -0.04578582  0.0027315443 -0.0013756131 -0.001428675
+## tasaFlujoGas2  -0.13446331 -0.0013756131  0.0022631774  0.001240270
+## aperturaBoq    -0.23412992 -0.0014286747  0.0012402700  0.003522361
+## tempGas        -0.57032267 -0.0003226833 -0.0002146225  0.000573541
+##                     tempGas
+## (Intercept)   -0.5703226673
+## tasaFlujoGas1 -0.0003226833
+## tasaFlujoGas2 -0.0002146225
+## aperturaBoq    0.0005735410
+## tempGas        0.0028366070</code></pre>
+<pre><code>Posteriormente, se obtiene las std error de los betas</code></pre>
+<pre class="r"><code>errores = c()
+
+for (i in 1: 5) {
+  errores[i] = sqrt(Var_Betas[i,i]) 
+}  
+
+errores_Betas = matrix(errores, dimnames = list(names, &quot;Std error&quot; )) 
+errores_Betas</code></pre>
+<pre><code>##                 Std error
+## b0            12.59988115
+## tasaFlujoGas1  0.05226418
+## tasaFlujoGas2  0.04757286
+## aperturaBoq    0.05934948
+## tempGas        0.05325981</code></pre>
+<pre><code>Como se puede observar, son iguales a los errores calculados con la
+función lm.</code></pre>
+<ol start="3" style="list-style-type: lower-roman">
+<li><p><strong><em>T-value</em></strong></p>
+<p>Se procede a calcular el los T-valores de cada variable:</p></li>
+</ol>
+<pre class="r"><code>t_valor_matriz = c() 
+
+for (i in 1: 5) {  
+  t_valor_matriz[i] = Betas[i,]/errores_Betas[i,] 
+} 
+
+t_valores = matrix(t_valor_matriz,dimnames = list(names, &quot;T-value&quot; ))
+t_valores</code></pre>
+<pre><code>##                  T-value
+## b0            -0.8122191
+## tasaFlujoGas1  6.4174002
+## tasaFlujoGas2 -1.5406622
+## aperturaBoq    1.4936495
+## tempGas        2.1128076</code></pre>
+<ol start="4" style="list-style-type: lower-roman">
+<li><p><strong><em>Pr(&gt;|t|)</em></strong></p>
+<p>Con lo anterior, se obtiene que las probabilidades son:</p>
+<pre class="r"><code>probabilidades = c() 
+
+for (i in 1: 5) {
+probabilidades[i] = 2*(1-pt(abs(t_valor_matriz[i]), 1)) 
+} 
+
+P_T = matrix(probabilidades,dimnames = list(names, &quot;Pr(&gt;|t|)&quot; )) 
+P_T</code></pre>
+<pre><code>##                 Pr(&gt;|t|)
+## b0            0.56573154
+## tasaFlujoGas1 0.09841069
+## tasaFlujoGas2 0.36651617
+## aperturaBoq   0.37558169
+## tempGas       0.28142638</code></pre>
+<p>De tal manera, comparando con lo obtenido por lm, se tienen los
+mismos resultados.</p></li>
+<li><p><strong><em>Residual estándar error.</em></strong></p>
+<p>Primero, se obtiene la matriz de proyección P</p></li>
+</ol>
+<pre class="r"><code>P = X %*% XTXI %*% t(X)
+P</code></pre>
+<pre><code>##             obs1        obs2        obs3        obs4         obs5         obs6
+## obs1  0.78840211 -0.19307656  0.26760326  0.22803272 -0.015495472 -0.075466065
+## obs2 -0.19307656  0.82382358  0.24417974  0.20807284 -0.014139141 -0.068860462
+## obs3  0.26760326  0.24417974  0.66156796 -0.28838804  0.019596787  0.095440297
+## obs4  0.22803272  0.20807284 -0.28838804  0.75425595  0.016699007  0.081327525
+## obs5 -0.01549547 -0.01413914  0.01959679  0.01669901  0.998865255 -0.005526437
+## obs6 -0.07546607 -0.06886046  0.09544030  0.08132752 -0.005526437  0.973085142</code></pre>
+<pre><code>Luego, se calcula la matriz IP</code></pre>
+<pre class="r"><code>Id = diag(rep(1,6)) 
+IP = Id-P</code></pre>
+<pre><code>Tercero, se obtiene la SSE (suma de los cuadrados residuales)</code></pre>
+<pre class="r"><code>SSE=t(Y)%*%IP%*%Y</code></pre>
+<pre><code>Finalmente, se calcula el error residual estándar</code></pre>
+<pre class="r"><code>error_residual = sqrt(SSE/(6-5)) 
+error_residual</code></pre>
+<pre><code>##          [,1]
+## [1,] 1.159267</code></pre>
+<pre><code>La cual es la misma que da la función lm.</code></pre>
+<ol start="6" style="list-style-type: lower-roman">
+<li><p><strong><em>R cuadrado</em></strong></p>
+<p>Primeramente, se obtiene la SST (total de las sumas la
+cuadrado)</p></li>
+</ol>
+<pre class="r"><code>SST = t(Y)%*%(Y) 
+SST</code></pre>
+<pre><code>##          [,1]
+## [1,] 15987.57</code></pre>
+<pre><code>Se centran las observaciones, por lo que se tiene el SSTC (SST
+centrado)</code></pre>
+<pre class="r"><code>y_mean = mean(Y) 
+SSTC = SST-6*y_mean^2 
+SSTC</code></pre>
+<pre><code>##          [,1]
+## [1,] 100.8377</code></pre>
+<pre><code>Por consiguiente, el R cuadrado es:</code></pre>
+<pre class="r"><code>R2= 1-SSE/SSTC 
+R2</code></pre>
+<pre><code>##           [,1]
+## [1,] 0.9866726</code></pre>
+<pre><code>que es el mismo que el dado por la función lm.</code></pre>
+<ol start="7" style="list-style-type: lower-roman">
+<li><strong><em>R cuadrado Ajustado</em></strong></li>
+</ol>
+<pre class="r"><code>R2adj = 1-((6-1)/(6-5))*(1-R2) 
+R2adj</code></pre>
+<pre><code>##           [,1]
+## [1,] 0.9333632</code></pre>
+<pre><code> Es posible identificar que es igual al calculado por la función lm.</code></pre>
+<ol start="8" style="list-style-type: lower-roman">
+<li><p><strong><em>F-estadistico y su p-value.</em></strong></p>
+<p>Para obtener el F-estadístico, es necesario conocer sus grados de
+libertad. Se sabe que posee t y N-r = 1 grados de libertad. Entonces,
+queda pendiente conocer t.</p>
+<p>Por medio de las probabilidades Pr(&gt;|t|), se puede identificar que
+la variable tasaFlujoGas1 posee la menor probabilidad y por ende se
+considera como una variable significativa junto a B0, con respecto a las
+otras. Dado que t es la cantidad de variables que no aportan información
+significativa, se tiene que t = 4.</p>
+<p>De tal manera, el estadístico F es:</p></li>
+</ol>
+<pre class="r"><code>F = (R2/4)/(1-R2) 
+F</code></pre>
+<pre><code>##          [,1]
+## [1,] 18.50841</code></pre>
+<pre><code>  Finalmente, el p-valor corresponde a :</code></pre>
+<pre class="r"><code>p_valor = 1-pf(F,4,1) 
+p_valor</code></pre>
+<pre><code>##           [,1]
+## [1,] 0.1723969</code></pre>
+<pre><code>  Como se puede ver,ambos valores son los mismos que los dados por
+  la función lm.</code></pre>
+</div>
+<div id="d.-realice-una-prueba-de-contraste-para-determinar-si-se-acepta-o-no-la-hipótesis-que-tasa-flujo-gas-2-aperturaboq-0." class="section level2">
+<h2><strong>d. Realice una prueba de contraste para determinar si se
+acepta o no la hipótesis que Tasa Flujo Gas 2 + aperturaBoq =
+0.</strong></h2>
+<p>Se realiza una prueba de contraste con las siguientes hipótesis:</p>
+<ul>
+<li><span class="math inline">\(H_0 : B2 + B3 = 0\)</span></li>
+<li><span class="math inline">\(H_1 : B2 + B3 \not = 0\)</span></li>
+</ul>
+<p>Primeramente, se realiza una regresión lineal sobre Tasa Flujo Gas 2
++ aperturaBoq</p>
+<pre class="r"><code>regresion_suma = lm(Y ~ tasaFlujoGas2 + aperturaBoq,data = X2)
+summary(regresion_suma)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Y ~ tasaFlujoGas2 + aperturaBoq, data = X2)
+## 
+## Residuals:
+##     obs1     obs2     obs3     obs4     obs5     obs6 
+## -0.07262  6.18399  1.54780 -0.34449 -4.04018 -3.27449 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)    26.6897    25.7891   1.035    0.377
+## tasaFlujoGas2   0.1161     0.1599   0.726    0.520
+## aperturaBoq     0.2421     0.2137   1.132    0.340
+## 
+## Residual standard error: 4.754 on 3 degrees of freedom
+## Multiple R-squared:  0.3276, Adjusted R-squared:  -0.1207 
+## F-statistic: 0.7307 on 2 and 3 DF,  p-value: 0.5514</code></pre>
+<p>Como segudo paso, se obtiene la matriz de covarianzas:</p>
+<pre class="r"><code>covarianzas_suma = vcov(regresion_suma)
+covarianzas_suma</code></pre>
+<pre><code>##               (Intercept) tasaFlujoGas2 aperturaBoq
+## (Intercept)    665.076240   -3.95412310 -2.93992625
+## tasaFlujoGas2   -3.954123    0.02555709  0.00967616
+## aperturaBoq     -2.939926    0.00967616  0.04568846</code></pre>
+<p>Seguido, se calcula el std error de la suma de los betas</p>
+<pre class="r"><code>var_B2B3 = covarianzas_suma[2,2]+covarianzas_suma[3,3]+2*covarianzas_suma[2,3]
+error_B2B3 = sqrt(var_B2B3)
+error_B2B3</code></pre>
+<pre><code>## [1] 0.3009948</code></pre>
+<p>Luego, se estima el T-valor de la siguiente manera:</p>
+<pre class="r"><code>t_valor_suma = (0.1161+0.2421)/error_B2B3
+t_valor_suma</code></pre>
+<pre><code>## [1] 1.190054</code></pre>
+<p>Finalmente, se calcula el p-valor para determinar si se rechaza o no
+la hipótesis nula. Para este, tenemos r = 3 y N = 6. De tal manera, el
+p-valor es:</p>
+<pre class="r"><code>p_valor_suma = 2*(1-pt(t_valor_suma, 6-3))
+p_valor_suma</code></pre>
+<pre><code>## [1] 0.3196181</code></pre>
+<p>Por tanto, con un nivel de confianza del 95%, se acepta la hipótesis
+nula.</p>
 </div>
 </div>
 

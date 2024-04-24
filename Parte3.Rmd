@@ -2,6 +2,9 @@
 title: "Untitled"
 output: html_document
 date: "2024-04-24"
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
@@ -9,52 +12,298 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Se cargan las librerías necesarias
+
 ```{r, warning=FALSE}
 library(MASS)
 ```
 
-
-
-
 # Parte 3
 
-Se carga la base de datos correspondiente 
+Se carga la base de datos correspondiente
 
 ```{r }
-Y=c(47.83,59.51,50.38,53.24,47.26,50.52)
-Ynames=c("obs1","obs2","obs3","obs4","obs5","obs6")
-names<-c("b0", "tasaFlujoGas1", "tasaFlujoGas2", "aperturaBoq", "tempGas")
+Y = c(47.83,59.51,50.38,53.24,47.26,50.52)
+Ynames = c("obs1","obs2","obs3","obs4","obs5","obs6")
+names = c("b0", "tasaFlujoGas1", "tasaFlujoGas2", "aperturaBoq", "tempGas")
 
-X=matrix(c(1, 124.17,134.07,23.32,210.11, 
+X = matrix(c(1, 124.17,134.07,23.32,210.11, 
     1,149.46,142.21,41.82,229.67,
     1,131.65,146.62,21.14,231.10,
     1,139.49,136.16,45.79,206.03,
     1,113.03,125.41,41.51,222.67,
     1,134.57,165.84,32.42,219.59),nrow=6,byrow = TRUE,dimnames=list(Ynames,names))
 
-X2 <-data.frame(cbind(Y,X[,-1]))
+X2 = data.frame(cbind(Y,X[,-1]))
 ```
 
 ## **a. Estime un modelo de regresión lineal, con la función lm() para la variable X2.**
 
 ```{r}
-regresion_lineal <- lm(Y ~ ., data = X2)
+regresion_lineal = lm(Y ~ ., data = X2)
 summary(regresion_lineal)
 ```
+## **b. La función lm() estima la inversa de XtX con base en el proceso de descomposición QR, de Gram–Schmidt, realice un breve descripción de este proceso y verifique usando la función qr.solve () que los estimadores del resultado de la regresión lineal de punto a son los mismos.**
+
+El proceso de descomposición QR se desarrolla de la siguiente forma:
+
+Sea $X$ una matriz nxm . Si consideramos las m columnas de $X$, denotadas por $x_j$ 
+podemos obtener una base ortogonal de vectores unitarios $q_j$ tales que:
+
+Si $X$ tiene rango completo (es decir, sus columnas son linealmente independientes),
+podemos relacionar los vectores $x_j$ y $q_j$ mediante la ecuación
+
+$x_k = r_{1k}q_1 + r_{2k}q_2 + r_{3k}q_3 + ... + r_{kk}q_k.$, con k = 1, ...,m
+
+Como los vectores $q_j$ son ortogonales, los coeficientes vienen
+dados por
+
+$rij = q_i*a_j$ con $i \not = j$
+
+Esto permite escribir
+
+$X = QR$ , donde $Q$ es una matriz nxm que satisface que $QQ = I$. Y, $R$ es una matriz
+mxm triangular superior.
+
+
+Si $X$ no tiene rango completo, entonces basta con seleccionar $q_k$
+de manera tal que sea ortogonal a $(q_1, . . . , q_{k-1})$. De esta manera también
+se puede escribir $X = QR$.
+
+Finalmente, la inversa de la matriz $X^tX$ se puede calcular mediante la 
+descomposición $QR$ de la matriz $X$.
+
+
+**Verificación usando qr.solve()**
+
+Empleando la función qr.solve se obtiene lo siguiente:
+```{r}
+QR = qr(X)
+qr.solve(QR, Y)
+```
+Como se puede observar, son los mismos valores de beta que brinda
+la función lm en el punto a.
+
 ## **c. Usando una matriz pseudo-inversa (Moonre-Penrose) y según lo visto en clases, reconstruya los valores de la regresión del punto a.**
 
-i. Estimadores
+i.  ***Estimadores***
 
+    Primeramente, se calcula la matriz ortogonal
 
-Primeramente, se calcula la matriz ortogonal
-```{r}
-X2_matriz <- as.matrix(X2)
-X2TX2 = t(X2_matriz) %*% X2_matriz
-X2TX2I = ginv(X2TX2)
+```{r} 
+X_matriz = as.matrix(X) 
+XTX = t(X_matriz) %*% X_matriz 
+XTXI = ginv(XTX) 
+XTXI
 ```
 
-Después, se obtiene la matriz de proyección o predicción P
-```{r}
-P= X2_matriz %*% X2TX2I %*% t(X2_matriz)
+    La solución de los betas es la siguiente:
+
+```{r} 
+Betas = XTXI %*% t(X_matriz) %*% Y
+Betas
 ```
 
+    Los cuales son los mismo que los obtenidos mediante la función lm.
+
+ii. ***Std error de los estimadores***
+
+    Como primer paso, se calcula la matriz de covarianzas
+
+```{r} 
+Var_Betas = vcov(regresion_lineal) 
+Var_Betas
+```
+
+    Posteriormente, se obtiene las std error de los betas
+
+```{r} 
+errores = c()
+
+for (i in 1: 5) {
+  errores[i] = sqrt(Var_Betas[i,i]) 
+}  
+
+errores_Betas = matrix(errores, dimnames = list(names, "Std error" )) 
+errores_Betas
+```
+
+    Como se puede observar, son iguales a los errores calculados con la
+    función lm.
+
+iii. ***T-value***
+
+     Se procede a calcular el los T-valores de cada variable:
+
+```{r} 
+t_valor_matriz = c() 
+
+for (i in 1: 5) {  
+  t_valor_matriz[i] = Betas[i,]/errores_Betas[i,] 
+} 
+
+t_valores = matrix(t_valor_matriz,dimnames = list(names, "T-value" ))
+t_valores
+```
+
+iv. ***Pr(\>\|t\|)***
+
+    Con lo anterior, se obtiene que las probabilidades son:
+
+    ```{r} 
+probabilidades = c() 
+    
+for (i in 1: 5) {
+    probabilidades[i] = 2*(1-pt(abs(t_valor_matriz[i]), 1)) 
+} 
+    
+P_T = matrix(probabilidades,dimnames = list(names, "Pr(>|t|)" )) 
+P_T
+    ```
+
+    De tal manera, comparando con lo obtenido por lm, se tienen los
+    mismos resultados.
+
+v.  ***Residual estándar error.***
+
+    Primero, se obtiene la matriz de proyección P
+
+```{r} 
+P = X %*% XTXI %*% t(X)
+P
+```
+
+    Luego, se calcula la matriz IP
+
+```{r} 
+Id = diag(rep(1,6)) 
+IP = Id-P
+```
+
+    Tercero, se obtiene la SSE (suma de los cuadrados residuales)
+
+```{r} 
+SSE=t(Y)%*%IP%*%Y
+```
+
+    Finalmente, se calcula el error residual estándar
+
+```{r} 
+error_residual = sqrt(SSE/(6-5)) 
+error_residual
+```
+
+    La cual es la misma que da la función lm.
+
+vi. ***R cuadrado***
+
+    Primeramente, se obtiene la SST (total de las sumas la cuadrado)
+
+```{r} 
+SST = t(Y)%*%(Y) 
+SST
+```
+
+    Se centran las observaciones, por lo que se tiene el SSTC (SST
+    centrado)
+
+```{r} 
+y_mean = mean(Y) 
+SSTC = SST-6*y_mean^2 
+SSTC
+```
+
+    Por consiguiente, el R cuadrado es:
+
+```{r} 
+R2= 1-SSE/SSTC 
+R2
+```
+
+    que es el mismo que el dado por la función lm.
+
+vii. ***R cuadrado Ajustado***
+
+```{r} 
+R2adj = 1-((6-1)/(6-5))*(1-R2) 
+R2adj
+```
+
+     Es posible identificar que es igual al calculado por la función lm.
+
+viii. ***F-estadistico y su p-value.***
+
+      Para obtener el F-estadístico, es necesario conocer sus grados de
+      libertad. Se sabe que posee t y N-r = 1 grados de libertad.
+      Entonces, queda pendiente conocer t.
+
+      Por medio de las probabilidades Pr(\>\|t\|), se puede identificar
+      que la variable tasaFlujoGas1 posee la menor probabilidad y por
+      ende se considera como una variable significativa junto a B0, con
+      respecto a las otras. Dado que t es la cantidad de variables que
+      no aportan información significativa, se tiene que t = 4.
+
+      De tal manera, el estadístico F es:
+
+```{r} 
+F = (R2/4)/(1-R2) 
+F
+```
+
+      Finalmente, el p-valor corresponde a :
+
+```{r} 
+p_valor = 1-pf(F,4,1) 
+p_valor
+```
+
+      Como se puede ver,ambos valores son los mismos que los dados por
+      la función lm.
+
+## **d. Realice una prueba de contraste para determinar si se acepta o no la hipótesis que Tasa Flujo Gas 2 + aperturaBoq = 0.**
+
+Se realiza una prueba de contraste con las siguientes hipótesis:
+
+-   $H_0 : B2 + B3 = 0$
+-   $H_1 : B2 + B3 \not = 0$
+
+Primeramente, se realiza una regresión lineal sobre Tasa Flujo Gas 2 +
+aperturaBoq
+
+```{r}
+regresion_suma = lm(Y ~ tasaFlujoGas2 + aperturaBoq,data = X2)
+summary(regresion_suma)
+```
+
+Como segudo paso, se obtiene la matriz de covarianzas:
+
+```{r}
+covarianzas_suma = vcov(regresion_suma)
+covarianzas_suma
+```
+
+Seguido, se calcula el std error de la suma de los betas
+
+```{r}
+var_B2B3 = covarianzas_suma[2,2]+covarianzas_suma[3,3]+2*covarianzas_suma[2,3]
+error_B2B3 = sqrt(var_B2B3)
+error_B2B3
+```
+
+Luego, se estima el T-valor de la siguiente manera:
+
+```{r}
+t_valor_suma = (0.1161+0.2421)/error_B2B3
+t_valor_suma
+```
+
+Finalmente, se calcula el p-valor para determinar si se rechaza o no la
+hipótesis nula. Para este, tenemos r = 3 y N = 6. De tal manera, el
+p-valor es:
+
+```{r}
+p_valor_suma = 2*(1-pt(t_valor_suma, 6-3))
+p_valor_suma
+```
+
+Por tanto, con un nivel de confianza del 95%, se acepta la hipótesis
+nula.

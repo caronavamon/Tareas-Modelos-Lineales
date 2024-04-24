@@ -1,0 +1,60 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-04-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Se cargan las librerías necesarias
+```{r, warning=FALSE}
+library(MASS)
+```
+
+
+
+
+# Parte 3
+
+Se carga la base de datos correspondiente 
+
+```{r }
+Y=c(47.83,59.51,50.38,53.24,47.26,50.52)
+Ynames=c("obs1","obs2","obs3","obs4","obs5","obs6")
+names<-c("b0", "tasaFlujoGas1", "tasaFlujoGas2", "aperturaBoq", "tempGas")
+
+X=matrix(c(1, 124.17,134.07,23.32,210.11, 
+    1,149.46,142.21,41.82,229.67,
+    1,131.65,146.62,21.14,231.10,
+    1,139.49,136.16,45.79,206.03,
+    1,113.03,125.41,41.51,222.67,
+    1,134.57,165.84,32.42,219.59),nrow=6,byrow = TRUE,dimnames=list(Ynames,names))
+
+X2 <-data.frame(cbind(Y,X[,-1]))
+```
+
+## **a. Estime un modelo de regresión lineal, con la función lm() para la variable X2.**
+
+```{r}
+regresion_lineal <- lm(Y ~ ., data = X2)
+summary(regresion_lineal)
+```
+## **c. Usando una matriz pseudo-inversa (Moonre-Penrose) y según lo visto en clases, reconstruya los valores de la regresión del punto a.**
+
+i. Estimadores
+
+
+Primeramente, se calcula la matriz ortogonal
+```{r}
+X2_matriz <- as.matrix(X2)
+X2TX2 = t(X2_matriz) %*% X2_matriz
+X2TX2I = ginv(X2TX2)
+```
+
+Después, se obtiene la matriz de proyección o predicción P
+```{r}
+P= X2_matriz %*% X2TX2I %*% t(X2_matriz)
+```
+

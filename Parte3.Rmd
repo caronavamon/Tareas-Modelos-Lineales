@@ -266,42 +266,24 @@ Se realiza una prueba de contraste con las siguientes hipótesis:
 -   $H_0 : B2 + B3 = 0$
 -   $H_1 : B2 + B3 \not = 0$
 
-Primeramente, se realiza una regresión lineal sobre Tasa Flujo Gas 2 +
-aperturaBoq
-
+Primero, se calcular el error:
 ```{r}
-regresion_suma = lm(Y ~ tasaFlujoGas2 + aperturaBoq,data = X2)
-summary(regresion_suma)
+error_suma =  sqrt(0.0022631774 + 0.003522361 +2*0.001240270)
+error_suma
 ```
 
-Como segudo paso, se obtiene la matriz de covarianzas:
-
+Así, el T-valor es:
 ```{r}
-covarianzas_suma = vcov(regresion_suma)
-covarianzas_suma
-```
-
-Seguido, se calcula el std error de la suma de los betas
-
-```{r}
-var_B2B3 = covarianzas_suma[2,2]+covarianzas_suma[3,3]+2*covarianzas_suma[2,3]
-error_B2B3 = sqrt(var_B2B3)
-error_B2B3
-```
-
-Luego, se estima el T-valor de la siguiente manera:
-
-```{r}
-t_valor_suma = (0.1161+0.2421)/error_B2B3
+t_valor_suma = (-0.07329 + 0.08865)/error_suma
 t_valor_suma
 ```
 
 Finalmente, se calcula el p-valor para determinar si se rechaza o no la
-hipótesis nula. Para este, tenemos r = 3 y N = 6. De tal manera, el
+hipótesis nula. Para este, tenemos r = 5 y N = 6. De tal manera, el
 p-valor es:
 
 ```{r}
-p_valor_suma = 2*(1-pt(t_valor_suma, 6-3))
+p_valor_suma = 2*(1-pt(t_valor_suma, 6-5))
 p_valor_suma
 ```
 

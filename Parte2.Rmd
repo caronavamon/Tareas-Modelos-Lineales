@@ -1,0 +1,165 @@
+
+
+```{r}
+library(datasets)
+state.x77=as.data.frame(state.x77)
+head(state.x77)
+```
+
+# 1. Matriz de correlaciones
+
+```{r}
+matriz_cor <- cor(state.x77)
+matriz_cor
+```
+
+# 2. Modelos lineales usando la función *lm*.
+
+```{r}
+# Modelo 1: Murder ~ Population
+model1 <- lm(Murder ~ Population, data = state.x77)
+summary(model1)
+
+```
+```{r}
+# Modelo 2: Murder ~ Illiteracy
+model2 <- lm(Murder ~ Illiteracy, data = state.x77)
+summary(model2)
+
+```
+
+```{r}
+
+# Modelo 3: Murder ~ Population + Illiteracy
+model3 <- lm(Murder ~ Population + Illiteracy, data = state.x77)
+summary(model3)
+```
+# 3. Gráficos de dispersión correspondientes y las rectas 
+de mínimos cuadrados para los tres modelos anteriores.
+
+```{r}
+# Gráfico de dispersión y recta de mínimos cuadrados para el modelo 1: Murder ~ Population
+plot(state.x77$Population, state.x77$Murder, main = "Murder vs Population", xlab = "Population", ylab = "Murder")
+abline(model1, col = "red")
+
+
+```
+```{r}
+# Gráfico de dispersión y recta de mínimos cuadrados para el modelo 2: Murder ~ Illiteracy
+plot(state.x77$Illiteracy, state.x77$Murder, main = "Murder vs Illiteracy", xlab = "Illiteracy", ylab = "Murder")
+abline(model2, col = "blue")
+
+
+```
+
+
+```{r}
+# Gráfico de dispersión y recta de mínimos cuadrados para el modelo 3: Murder ~ Population + Illiteracy
+
+library(plotly)
+
+# Crear una cuadrícula de valores para Illiteracy y Population
+illiteracy_grid <- seq(min(state.x77$Illiteracy), max(state.x77$Illiteracy), length.out = 20)
+population_grid <- seq(min(state.x77$Population), max(state.x77$Population), length.out = 20)
+grid <- expand.grid(Illiteracy = illiteracy_grid, Population = population_grid)
+
+# Calcular los valores predichos de Murder para cada combinación de Illiteracy y Population
+predictions <- predict(model3, newdata = grid)
+
+# Calcular los valores predichos de Murder para los datos originales
+predictions_original <- predict(model3)
+
+# Coeficientes del plano de mínimos cuadrados
+intercept <- coef(model3)[1]
+slope_population <- coef(model3)[2]
+slope_illiteracy <- coef(model3)[3]
+
+# Calcular los valores de Murder para la recta de mínimos cuadrados
+murder_line <- intercept + slope_population * grid$Population + slope_illiteracy * grid$Illiteracy
+
+# Crear el gráfico 3D con plotly
+scatter_plot <- plot_ly(x = grid$Illiteracy, y = grid$Population, z = predictions, type = "surface")
+scatter_plot <- add_trace(scatter_plot, x = state.x77$Illiteracy, y = state.x77$Population, z = state.x77$Murder, mode = "markers", type = "scatter3d", marker = list(size = 5))
+
+# Agregar plano de mínimos cuadrados
+scatter_plot <- add_trace(scatter_plot, x = grid$Illiteracy, y = grid$Population, z = murder_line, mode = "lines", type = "scatter3d", line = list(color = "blue", width = 3))
+
+# Etiquetas y título
+scatter_plot <- layout(scatter_plot, scene = list(xaxis = list(title = "Illiteracy"), yaxis = list(title = "Population"), zaxis = list(title = "Murder")), title = "Murder vs Population + Illiteracy")
+
+# Mostrar el gráfico
+scatter_plot
+
+```
+
+
+# 4. Se evalua para el modelo Murder ~ Population las hipótesis de homocedasticidad, 
+normalidad de errores y ausencia de puntos influyentes o atípicos.
+
+```{r}
+residuos <- residuals(model1)
+```
+
+```{r}
+varianza_residuos <- var(residuos)
+```
+
+```{r}
+# Gráfico de dispersión de los residuos vs valores ajustados
+plot(predict(model1), residuos, main = "Residuos vs Valores Ajustados", xlab = "Valores Ajustados", ylab = "Residuos")
+```
+
+
+## Homocedasticidad
+
+```{r}
+
+# Prueba Breusch-Pagan para la homocedasticidad
+library(lmtest)
+bptest(model1)
+```
+Como el valor p (0.2317) es mayor que el nivel de significancia típico de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de homocedasticidad.Por ende, según esta prueba, el modelo Murder ~ Population cumple con el supuesto de homocedasticidad.
+
+Normalidad de errores
+
+```{r}
+shapiro.test(residuos)
+```
+Dado que el valor p (0.0642) es mayor que el nivel de significancia típico de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de normalidad. Por lo tanto, según esta prueba, los residuos del modelo parecen seguir una distribución normal.
+
+
+## Normalidad
+
+```{r}
+library(nortest)
+lillie.test(residuos)
+```
+Dado que el valor p (0.5801) es mayor que el nivel de significancia comúnmente utilizado de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de normalidad. Por lo tanto, según esta prueba, los residuos del modelo parecen seguir una distribución normal.
+
+```{r}
+library(tseries)
+jarque.bera.test(residuos)
+```
+Dado que el valor p (0.2721) es mayor que el nivel de significancia típicamente utilizado de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de que los datos provienen de una distribución normal. Por lo tanto, en este caso, los datos podrían considerarse aproximadamente normales según el test de Jarque-Bera.
+
+
+
+
+
+5. Estimación de las tasas de homicidio para niveles de Illiteracy de 0.25, 1.2, 2.1, 3.0, 4.0. 
+en el segundo modelo.
+
+```{r}
+
+coeficientes <- coef(model2)
+
+
+niveles_illiteracy <- c(0.25, 1.2, 2.1, 3.0, 4.0)
+
+
+tasas_homicidio_manual <- coeficientes[1] + coeficientes[2] * niveles_illiteracy
+
+
+resultado_manual <- data.frame(Illiteracy = niveles_illiteracy, Tasa_Homicidio_Estimada = tasas_homicidio_manual)
+print(resultado_manual)
+```

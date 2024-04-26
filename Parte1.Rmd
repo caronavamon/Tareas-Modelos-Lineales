@@ -1,0 +1,347 @@
+---
+title: Tarea de Modelo lineales <br> Parte 1
+author:
+  - "Jose Pablo Trejos Conejo C07862"
+output:
+  rmdformats::robobook:
+        code_folding: show
+  html_document:
+    toc: TRUE
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Parte 1
+
+### Librerias:
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+library(psych)
+library(GGally)
+library(knitr)
+library(ggplot2)
+library(gridExtra)
+library(lmtest)
+library(corrplot)
+library(car)
+```
+
+
+Del siguiente link: https://rpubs.com/Joaquin_AR/226291 ,realice las siguientes acciones:  
+
+## a. Replique en un Script de R, los Ejemplos 1 y 2, usando todas las funciones que se presenta el artículo.
+
+### Ejemplo 1:
+
+Para este primer ejemplo se desea generar un modelo que permita predecir la esperanza de vida media de los habitantes de una ciudad en función de diferentes variables. Se dispone de información sobre: habitantes, analfabetismo, ingresos, esperanza de vida, asesinatos, universitarios, heladas, área y densidad poblacional. Los datos se cargan acontinuación:
+
+```{r}
+datos <- as.data.frame(state.x77)
+datos <- rename(habitantes = Population, analfabetismo = Illiteracy,
+                ingresos = Income, esp_vida = `Life Exp`, asesinatos = Murder,
+                universitarios = `HS Grad`, heladas = Frost, area = Area,
+                .data = datos)
+datos <- mutate(.data = datos, densidad_pobl = habitantes * 1000 / area)
+```
+
+#### 1) Analizar la relación entre variables.
+
+Acontinucación, se estudia la relación entre las variables de la base de datos, esto para determinar si existe colinealidad o si se presentan varibales con relaciones de tipo no lineal. Para esto se corre la función `cor()` que devuelve las correlaciones entre variables y se redondea el resultado en el tercer decimal.
+
+```{r}
+as.data.frame(round(cor(x = datos, method = "pearson"), 3))
+```
+
+Además, se representa la distribución de las vaiables mediante histogramas. Esto con ayuda de la fucnción `multi.hist()`.
+```{r}
+multi.hist(x = datos, dcol = c("blue", "red"), dlty = c("dotted", "solid"), global = F)
+```
+
+Otro ejemplo en el que se calculan las correlaciones y se generan histogramas a la vez, se encuentra con la función `ggpairs()`.
+```{r, warning=FALSE, message=FALSE}
+ggpairs(datos, lower = list(continuous = "smooth"),
+        diag = list(continuous = "barDiag"), axisLabels = "none")
+```
+
+De lo anterior se extra que las variables con mayor relación con `esp_vida` son `asesinatos`, `analfabetismo` y `universitarios`. Además, dado que las primeras dos variables poseen cierto grado de correlación, pude suceder que no sea útil intoducir ambas al modelo.
+
+#### 2) Generar el modelo.
+
+Ahora, que se conoce la información repecto a las correlaciones y posibles distribuciones, se procede a generar un modelo mediante el método mixto y utilizando la medición AIC para la validación de los predictores.
+```{r}
+modelo <- lm(esp_vida ~ habitantes + ingresos + analfabetismo + asesinatos +
+             universitarios + heladas + area + densidad_pobl, data = datos )
+
+summary(modelo)
+```
+
+Con lo anterior se obtiene que el modelo pude explicar aproximadamente el 75% de la variabilidad, esto ya que el $R^{2}$ fue de 0.7501. Por otro lado, ya que el p-valor obtenido fue significativo se pude aceptar que no se llegó al modelo por azar. Ademán, al menos uno de los coeficientes parciales de regresión es diferente de cero. 
+
+#### 3) Selección de los mejores predictores.
+
+Ahora se procede a seleccionar los mejores predictores empleando el método AIC.
+```{r}
+step(object = modelo, direction = "both", trace = 1)
+```
+
+Por lo tanto el mejor modelo resulta de tomar `habitantes`, `asesinatos`, `universitarios` y `heladas` como predictores.
+```{r}
+modelo <- (lm(formula = esp_vida ~ habitantes + asesinatos + universitarios +
+              heladas, data = datos))
+summary(modelo)
+```
+
+Se muestra un intervalo de confianza para cada coeficiente parcial de regresión.
+```{r}
+confint(lm(formula = esp_vida ~ habitantes + asesinatos + universitarios +
+            heladas, data = datos))
+```
+
+#### 4) Validación de condiciones para la regresión múltiple lineal.
+
+Ahora se valida la condición de variabilidad constante para los residuos es decir la homocesdasticidad.
+```{r, message=FALSE}
+plot1 <- ggplot(data = datos, aes(habitantes, modelo$residuals)) +
+    geom_point() + geom_smooth(color = "firebrick") + geom_hline(yintercept = 0) +
+    theme_bw()
+plot2 <- ggplot(data = datos, aes(asesinatos, modelo$residuals)) +
+    geom_point() + geom_smooth(color = "firebrick") + geom_hline(yintercept = 0) +
+    theme_bw()
+plot3 <- ggplot(data = datos, aes(universitarios, modelo$residuals)) +
+    geom_point() + geom_smooth(color = "firebrick") + geom_hline(yintercept = 0) +
+    theme_bw()
+plot4 <- ggplot(data = datos, aes(heladas, modelo$residuals)) +
+    geom_point() + geom_smooth(color = "firebrick") + geom_hline(yintercept = 0) +
+    theme_bw()
+grid.arrange(plot1, plot2, plot3, plot4)
+```
+
+Ahora se testea la distribución normal de los residuos.
+```{r}
+qqnorm(modelo$residuals)
+qqline(modelo$residuals)
+```
+
+```{r}
+shapiro.test(modelo$residuals)
+```
+
+Se concluye que el análisis gráfico y la prueba, confirman la normalidad de los residuos.
+
+Cuando graficamos los residuos en función de los valores ajustados por el modelo, esperamos ver que los residuos se distribuyan aleatoriamente alrededor de cero, sin mostrar ningún patrón. Además, esperamos que la variabilidad de los residuos sea más o menos constante a lo largo del eje X. Sin embargo, si identificamos algún patrón específico en la distribución de los residuos, como una forma cónica o una mayor dispersión en los extremos, esto indica que la variabilidad de los residuos está relacionada con los valores ajustados por el modelo, lo que sugiere una falta de homocedasticidad en el mismo.
+```{r, message=FALSE}
+ggplot(data = datos, aes(modelo$fitted.values, modelo$residuals)) +
+geom_point() +
+geom_smooth(color = "firebrick", se = FALSE) +
+geom_hline(yintercept = 0) +
+theme_bw()
+```
+
+```{r}
+bptest(modelo)
+```
+
+Por lo tanto no hay evidencia de ausencia de homocedasticidad.
+
+Relación entre los predictores.
+```{r}
+corrplot(cor(dplyr::select(datos, habitantes, asesinatos,universitarios,heladas)),
+         method = "number", tl.col = "black")
+```
+
+Análisis de Inflación de la Varianza.
+```{r}
+vif(modelo)
+```
+
+El resultado anterior señala que no hay evidencia de una correlación lineal muy alta ni inflación de varianza.
+
+Autocorrelación.
+```{r}
+dwt(modelo, alternative = "two.sided")
+```
+
+El resultado anterior muestra que no existe evidencia de auto correlación.
+
+#### 5) Identificación de posibles valores atípicos o influyentes.
+
+Identificación de posibles valores atípicos.
+```{r}
+datos$studentized_residual <- rstudent(modelo)
+
+ggplot(data = datos, aes(x = predict(modelo), y = abs(studentized_residual))) +
+  geom_hline(yintercept = 3, color = "grey", linetype = "dashed") +
+  
+# se identifican en rojo observaciones con residuos estandarizados absolutos > 3
+geom_point(aes(color = ifelse(abs(studentized_residual) > 3, 'red', 'black'))) +
+  scale_color_identity() +
+  labs(title = "Distribución de los residuos studentized",
+       x = "Predicción modelo") + 
+  theme_bw() + theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+which(abs(datos$studentized_residual) > 3)
+```
+
+No se encuentran valores atípicos.
+
+```{r}
+summary(influence.measures(modelo))
+```
+
+En la tabla anterior se listan las observaciones que son significativamente influyentes en al menos uno de los predictores.
+```{r}
+influencePlot(modelo)
+```
+
+El análisis anterior muestra valores preocupantes para los valores Leverages o Distancia Cook (California y Maine). Un estudio más exhaustivo recomendaría rehacer el modelo sin dichas observaciones y comparar los resultados.
+
+#### 6) Conclusión.
+
+En conclusión el modelo de regresión lineal múltiple sería: Esperanza de  vida $=5.014e^{-05}$habitantes $- 3.001e^{−01}$asesinatos $+4.658e^{−02}$universitarios $−5.943e^{−03}$heladas. que es capaz de explicar el 73.6% de la variabilidad observada en la esperanza de vida.
+
+### Ejemplo 2
+
+Este ejmplo se ejecuta mediante una base de datos con información de 30 libros. Se conoce del peso total de cada libro, el volumen que tiene y el tipo de tapas (duras o blandas). Se quiere generar un modelo lineal múltiple que permita predecir el peso de un libro en función de su volumen y del tipo de tapas.
+```{r}
+datos <- data.frame(peso = c(800, 950, 1050, 350, 750, 600, 1075, 250, 700,
+                             650, 975, 350, 950, 425, 725),
+                    volumen = c(885, 1016, 1125, 239, 701, 641, 1228, 412, 953,
+                                929, 1492, 419, 1010, 595, 1034),
+                    tipo_tapas = c("duras", "duras", "duras", "duras", "duras", 
+                                   "duras", "duras", "blandas", "blandas",
+                                   "blandas", "blandas", "blandas", "blandas",
+                                   "blandas", "blandas"))
+head(datos, 4)
+```
+
+#### 1) Primero se analiza las correlaciones entre la variable cualitativas.
+
+```{r}
+datos$tipo_tapas <- as.factor(datos$tipo_tapas)
+pairs(x = datos)
+```
+
+```{r}
+cor.test(datos$peso, datos$volumen, method = "pearson")
+```
+
+```{r}
+ggplot(data = datos, mapping=aes(x = tipo_tapas, y = peso, color=tipo_tapas)) +
+geom_boxplot() +
+geom_jitter(width = 0.1) +
+theme_bw() + theme(legend.position = "none")
+```
+
+Con los análisis anteriores se muestra que existe una relación lineal entre la variable `peso` y  `volumen`. Además la variable `tipo_tapas` aparenta influir en el peso.
+
+#### 2) Modelo lineal multiple.
+
+```{r}
+modelo <- lm(peso ~ volumen + tipo_tapas, data = datos)
+summary(modelo)
+```
+```{r}
+confint(modelo)
+```
+
+Por lo anterior, el modelo es capaz de explicar aproximadamente el 92.7% de la variabilidad observada, en el peso. Además, por el F teste, se puede decir que la muestra fue significativa.
+
+#### 3) Elección de los predictores.
+
+En este caso solo hay dos posibles predicotres que mediante la función `summary()` se constataron como importantes.
+
+#### 4) Condiciones para la regresión lineal múltiple.
+
+Relación lineal entre los predictores numéricos y la variable dependiente:
+```{r, message=FALSE}
+library(ggplot2)
+ggplot(data = datos, aes(x = volumen, y = modelo$residuals)) +
+geom_point() +
+geom_smooth(color = "firebrick") +
+geom_hline(yintercept = 0) +
+theme_bw()
+```
+
+Se satisface la condición de linealidad y se observa un dato que podría ser atípico.
+
+Distribución normal de los residuos:
+```{r}
+qqnorm(modelo$residuals)
+qqline(modelo$residuals)
+```
+
+```{r}
+shapiro.test(modelo$residuals)
+```
+Por lo anterior, se concluye que la condición de normalidad no se cumple, posiblemente por el dato atípico observado anteriormente. Por lo tanto, se vuelve a correr el código sin el valor atípico.
+```{r}
+dato_at <- which.max(modelo$residuals)
+shapiro.test(modelo$residuals[-dato_at])
+```
+
+Por lo tanto, los residuos sí se distribuyen de forma normal.
+
+Variabilidad constante de los residuos:
+```{r, message=FALSE}
+ggplot(data = data.frame(predict_values = predict(modelo),
+                         residuos = residuals(modelo)),
+       aes(x = predict_values, y = residuos)) +
+    geom_point() +
+    geom_smooth(color = "firebrick", se = FALSE) +
+    geom_hline(yintercept = 0) +
+    theme_bw()
+```
+```{r}
+bptest(modelo)
+```
+
+No hay evidencias de falta de homocedasticidad. Además, dado que solo hay un predictor cuantitativo, no se puede dar colinealidad.
+
+Autocorrelación:
+```{r}
+dwt(modelo,alternative = "two.sided")
+```
+No hay evidencias de autocorrelación.
+
+#### 5) Identificación de posibles valores atípicos o influyentes
+```{r}
+outlierTest(modelo)
+```
+
+Justo como se vio anteriormente, existe un dato atípico.
+
+```{r}
+summary(influence.measures(modelo))
+```
+```{r}
+influencePlot(modelo)
+```
+
+El análisis anterior muestra la existencia de múltiples observaciones influyentes, pero ninguna preocupante bajo los valores leverage hat o distancia Cook.
+
+#### 6) Conclusión.
+ El modelo Peso $=13.91557+0.71795$volumen $+184.04727$tipotapas, es capaz de explicar el 92.7% de la variabilidad observada en el pseo de los libros.
+ 
+## b.Explique brevemente las siguientes funciones, incluyendo valores recibe y cuáles son sus salidas. 
+
+- `multi.hist` de la biblioteca `psych`: Recibe una matriz o dataframe y devuelve un plot con multiples histogramas para cada variable. Además, puede representar distribuciones de densidad para cada gráfico.
+- `ggpairs` de la biblioteca `GGally`: Esta función recibe un dataframe con variables continuas o categoricas y devuleve un gráfico que contiene las correlaciones encima de la diagonal, por debajo los diagramas de dispersión entre las variables continuas, en la diagonal los gráficos de densidad de las variables continuas y en los lados los histogramas y box plots de la combinación entre variables continuas y categóricas.
+- Función `Step` de la sección 3 del ejemplo 1: Esta función permite encontrar el mejor modelo basado en AIC utilizando a elección el método forward, backward o moxto. Esta función recibe un modelo el cual es un objeto de tipo `lm` o `glm`, y devuelve el modelo seleccionado.
+- `Confint` : Recibe un objeto de tipo modelo y devuelve una matriz o vector con los limites superior e inferior de confianza para cada parámetro.
+- `Corrplot` de la biblioteca `corrplot`: Esta función recibe una matriz de correlaciones y devuelve un gráfico de dichas correlaciones.
+- `Dwt` de la biblioteca `car`: Esta función recibe una serie de tiempo univariada o multivariada (vectores numéricos, matrices y dataframes son también aceptados) y calcula los coeficientes de la transformada wavelet discretaDevuelve. Devuelve un objeto de tipo `dwt` con información respecto a la autocorrelación.
+- `InfluencePlot`: Esta función recibe un modelo lineal y retorna un gráfico de "burbujas" de los residuos de Studentized frente a los valores hat, con las áreas de los círculos que representan las observaciones proporcionales al valor Distancia de Cook. 
+- `outlierTest` de la biblioteca `car`: Esta función recibe un modelo de regresión lineal e informa de los valores atípicos basado en los p-valores de Bonferroni.
+- `influence.measure`: Esta función se utiliza para calcular algunos de los diagnósticos de regresión para modelos lineales y lineales generalizados. Recibe un modelo lineal y retorna objeto que al pasarlo por la función `summary`, revela información relevante sobre la influencia de las observaciones.
+
+## c.Explique los test incluyendo cual es la hipótesis nula.  
+
+- Shapiro-Wilk para normalidad: Esta prueba estadística se utiliza para determinar si un conjunto de datos proviene de una distribución normal, para ello se establecen las hipótesis: $H_{0}:$ La distribución es normal y $H_{1}:$ La distribución no es normal. Al realizar la prueba y dado un nivel de significancia, el p-valor arrojado indicará si se rechaza la hipotesis nula ($H_{0}$) o sí, por lo contrario, se acepta.
+
+
+- Studentized Breusch-Pagan para homocedasticidad: Esta prueba se implementa para corroborar la homocedasticidad al analizar si la varianza estimada de los residuos de una regresión dependen de los valores de las variables independientes. En este test las hipótesis son: $H_{0}:$ Los errores tiene varianza constante y $H_{1}:$ Los errores no tiene varianza constante.
+Además, como en el test anterior dado un nivel de significancia, el p-valor arrojado podrá o no rechazar la hipótesis nula.

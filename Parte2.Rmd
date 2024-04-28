@@ -98,45 +98,39 @@ normalidad de errores y ausencia de puntos influyentes o atípicos.
 
 ```{r}
 residuos <- residuals(model1)
-```
-
-```{r}
-varianza_residuos <- var(residuos)
-```
-
-```{r}
-# Gráfico de dispersión de los residuos vs valores ajustados
-plot(predict(model1), residuos, main = "Residuos vs Valores Ajustados", xlab = "Valores Ajustados", ylab = "Residuos")
+plot(residuos)
 ```
 
 
 ## Homocedasticidad
 
 ```{r}
-
 # Prueba Breusch-Pagan para la homocedasticidad
 library(lmtest)
 bptest(model1)
 ```
 Como el valor p (0.2317) es mayor que el nivel de significancia típico de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de homocedasticidad.Por ende, según esta prueba, el modelo Murder ~ Population cumple con el supuesto de homocedasticidad.
 
-Normalidad de errores
+
+
+## Normalidad de errores
 
 ```{r}
+# Prueba Shapiro-Wilk para la Normalidad
 shapiro.test(residuos)
 ```
 Dado que el valor p (0.0642) es mayor que el nivel de significancia típico de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de normalidad. Por lo tanto, según esta prueba, los residuos del modelo parecen seguir una distribución normal.
 
 
-## Normalidad
-
 ```{r}
+# Prueba Kolmogorov-Smirnov para la Normalidad
 library(nortest)
 lillie.test(residuos)
 ```
 Dado que el valor p (0.5801) es mayor que el nivel de significancia comúnmente utilizado de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de normalidad. Por lo tanto, según esta prueba, los residuos del modelo parecen seguir una distribución normal.
 
 ```{r}
+# Prueba Jarque Bera para la Normalidad
 library(tseries)
 jarque.bera.test(residuos)
 ```
@@ -144,6 +138,59 @@ Dado que el valor p (0.2721) es mayor que el nivel de significancia típicamente
 
 
 
+## Puntos influyentes o atípicos 
+
+```{r}
+qqnorm(residuos)
+```
+
+```{r}
+num_bins <- 30
+hist(residuos, breaks = num_bins, col = "skyblue", main = "Histograma de Residuos", xlab = "Residuos")
+```
+
+```{r}
+mediaRes <- mean(residuos)
+desRes <- sd(residuos)
+
+valorRefAtipD <- mediaRes+2*desRes
+valorRefAtipI <- mediaRes-2*desRes
+
+atipDerecha <- residuos[residuos > valorRefAtipD]
+atipIzquierda <- residuos[residuos < valorRefAtipI]
+
+# Imprime los residuos atípicos
+print("Residuos atípicos en el extremo derecho:")
+print(atipDerecha)
+
+print("Residuos atípicos en el extremo izquierdo:")
+print(atipIzquierda)
+```
+
+
+```{r}
+# Prueba de los residuos estandarizados
+residuos_estandarizados <- residuos / sd(residuos)
+valores_atipicos_residuos <- which(abs(residuos_estandarizados) > 2)  # Umbral común: 2 desviaciones estándar
+print(valores_atipicos_residuos)
+```
+
+```{r}
+outlier_test <- outlierTest(model1)
+print(outlier_test)
+```
+```{r}
+plot(model1)
+```
+Según los gráficos y pruebas anteriores, hay evidencia de al menos un valor atípico (Alabama) por la derecha.
+
+```{r}
+library(car)
+library(carData)
+influencePlot(model1)
+```
+
+Además según lo anteior, se presentan ciertos valores influyentes. 
 
 
 5. Estimación de las tasas de homicidio para niveles de Illiteracy de 0.25, 1.2, 2.1, 3.0, 4.0. 
@@ -157,9 +204,9 @@ coeficientes <- coef(model2)
 niveles_illiteracy <- c(0.25, 1.2, 2.1, 3.0, 4.0)
 
 
-tasas_homicidio_manual <- coeficientes[1] + coeficientes[2] * niveles_illiteracy
+tasas_homicidioE <- coeficientes[1] + coeficientes[2] * niveles_illiteracy
 
 
-resultado_manual <- data.frame(Illiteracy = niveles_illiteracy, Tasa_Homicidio_Estimada = tasas_homicidio_manual)
-print(resultado_manual)
+resultado <- data.frame(Illiteracy = niveles_illiteracy, Tasa_Homicidio_Estimada = tasas_homicidioE)
+print(resultado )
 ```

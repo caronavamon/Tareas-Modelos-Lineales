@@ -42,6 +42,7 @@ X2 = data.frame(cbind(Y,X[,-1]))
 regresion_lineal = lm(Y ~ ., data = X2)
 summary(regresion_lineal)
 ```
+
 ## **b. La función lm() estima la inversa de XtX con base en el proceso de descomposición QR, de Gram–Schmidt, realice un breve descripción de este proceso y verifique usando la función qr.solve () que los estimadores del resultado de la regresión lineal de punto a son los mismos.**
 
 El proceso de descomposición QR se desarrolla de la siguiente forma:

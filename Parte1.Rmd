@@ -2,6 +2,9 @@
 title: Tarea de Modelo lineales <br> Parte 1
 author:
   - "Jose Pablo Trejos Conejo C07862"
+  - "María Carolina Navarro Monge C05513"
+  - "Tábata Picado Carmona C05961" 
+  - "Jimena Marchena Mendoza B74425"
 output:
   rmdformats::robobook:
         code_folding: show
@@ -27,8 +30,12 @@ library(gridExtra)
 library(lmtest)
 library(corrplot)
 library(car)
+library(datasets)
+library(plotly)
+library(nortest)
+library(tseries)
+library(carData)
 ```
-
 
 Del siguiente link: https://rpubs.com/Joaquin_AR/226291 ,realice las siguientes acciones:  
 
@@ -258,7 +265,6 @@ En este caso solo hay dos posibles predicotres que mediante la función `summary
 
 Relación lineal entre los predictores numéricos y la variable dependiente:
 ```{r, message=FALSE}
-library(ggplot2)
 ggplot(data = datos, aes(x = volumen, y = modelo$residuals)) +
 geom_point() +
 geom_smooth(color = "firebrick") +
@@ -341,7 +347,6 @@ El análisis anterior muestra la existencia de múltiples observaciones influyen
 ## c.Explique los test incluyendo cual es la hipótesis nula.  
 
 - Shapiro-Wilk para normalidad: Esta prueba estadística se utiliza para determinar si un conjunto de datos proviene de una distribución normal, para ello se establecen las hipótesis: $H_{0}:$ La distribución es normal y $H_{1}:$ La distribución no es normal. Al realizar la prueba y dado un nivel de significancia, el p-valor arrojado indicará si se rechaza la hipotesis nula ($H_{0}$) o sí, por lo contrario, se acepta.
-
 
 - Studentized Breusch-Pagan para homocedasticidad: Esta prueba se implementa para corroborar la homocedasticidad al analizar si la varianza estimada de los residuos de una regresión dependen de los valores de las variables independientes. En este test las hipótesis son: $H_{0}:$ Los errores tiene varianza constante y $H_{1}:$ Los errores no tiene varianza constante.
 Además, como en el test anterior dado un nivel de significancia, el p-valor arrojado podrá o no rechazar la hipótesis nula.

@@ -1,0 +1,821 @@
+---
+title: Tarea de Modelo lineales  y de Sobrevivencia <br> Tarea 1 
+author:
+  - "Jose Pablo Trejos Conejo C07862"
+  - "María Carolina Navarro Monge C05513"
+  - "Tábata Picado Carmona C05961" 
+  - "Jimena Marchena Mendoza B74425"
+output:
+  rmdformats::robobook:
+        code_folding: show
+  html_document:
+    toc: TRUE
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Parte 1
+
+### Librerias:
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+library(psych)
+library(GGally)
+library(knitr)
+library(ggplot2)
+library(gridExtra)
+library(lmtest)
+library(corrplot)
+library(car)
+library(datasets)
+library(plotly)
+library(nortest)
+library(tseries)
+library(carData)
+library(MASS)
+```
+
+Del siguiente link: https://rpubs.com/Joaquin_AR/226291 ,realice las siguientes acciones:  
+
+## a. Replique en un Script de R, los Ejemplos 1 y 2, usando todas las funciones que se presenta el artículo.
+
+### Ejemplo 1:
+
+Para este primer ejemplo se desea generar un modelo que permita predecir la esperanza de vida media de los habitantes de una ciudad en función de diferentes variables. Se dispone de información sobre: habitantes, analfabetismo, ingresos, esperanza de vida, asesinatos, universitarios, heladas, área y densidad poblacional. Los datos se cargan acontinuación:
+
+```{r}
+datos <- as.data.frame(state.x77)
+datos <- rename(habitantes = Population, analfabetismo = Illiteracy,
+                ingresos = Income, esp_vida = `Life Exp`, asesinatos = Murder,
+                universitarios = `HS Grad`, heladas = Frost, area = Area,
+                .data = datos)
+datos <- mutate(.data = datos, densidad_pobl = habitantes * 1000 / area)
+```
+
+#### 1) Analizar la relación entre variables.
+
+Acontinucación, se estudia la relación entre las variables de la base de datos, esto para determinar si existe colinealidad o si se presentan varibales con relaciones de tipo no lineal. Para esto se corre la función `cor()` que devuelve las correlaciones entre variables y se redondea el resultado en el tercer decimal.
+
+```{r}
+as.data.frame(round(cor(x = datos, method = "pearson"), 3))
+```
+
+Además, se representa la distribución de las vaiables mediante histogramas. Esto con ayuda de la fucnción `multi.hist()`.
+```{r}
+multi.hist(x = datos, dcol = c("blue", "red"), dlty = c("dotted", "solid"), global = F)
+```
+
+Otro ejemplo en el que se calculan las correlaciones y se generan histogramas a la vez, se encuentra con la función `ggpairs()`.
+```{r, warning=FALSE, message=FALSE}
+ggpairs(datos, lower = list(continuous = "smooth"),
+        diag = list(continuous = "barDiag"), axisLabels = "none")
+```
+
+De lo anterior se extra que las variables con mayor relación con `esp_vida` son `asesinatos`, `analfabetismo` y `universitarios`. Además, dado que las primeras dos variables poseen cierto grado de correlación, pude suceder que no sea útil intoducir ambas al modelo.
+
+#### 2) Generar el modelo.
+
+Ahora, que se conoce la información repecto a las correlaciones y posibles distribuciones, se procede a generar un modelo mediante el método mixto y utilizando la medición AIC para la validación de los predictores.
+```{r}
+modelo <- lm(esp_vida ~ habitantes + ingresos + analfabetismo + asesinatos +
+             universitarios + heladas + area + densidad_pobl, data = datos )
+
+summary(modelo)
+```
+
+Con lo anterior se obtiene que el modelo pude explicar aproximadamente el 75% de la variabilidad, esto ya que el $R^{2}$ fue de 0.7501. Por otro lado, ya que el p-valor obtenido fue significativo se pude aceptar que no se llegó al modelo por azar. Ademán, al menos uno de los coeficientes parciales de regresión es diferente de cero. 
+
+#### 3) Selección de los mejores predictores.
+
+Ahora se procede a seleccionar los mejores predictores empleando el método AIC.
+```{r}
+step(object = modelo, direction = "both", trace = 1)
+```
+
+Por lo tanto el mejor modelo resulta de tomar `habitantes`, `asesinatos`, `universitarios` y `heladas` como predictores.
+```{r}
+modelo <- (lm(formula = esp_vida ~ habitantes + asesinatos + universitarios +
+              heladas, data = datos))
+summary(modelo)
+```
+
+Se muestra un intervalo de confianza para cada coeficiente parcial de regresión.
+```{r}
+confint(lm(formula = esp_vida ~ habitantes + asesinatos + universitarios +
+            heladas, data = datos))
+```
+
+#### 4) Validación de condiciones para la regresión múltiple lineal.
+
+Ahora se valida la condición de variabilidad constante para los residuos es decir la homocesdasticidad.
+```{r, message=FALSE}
+plot1 <- ggplot(data = datos, aes(habitantes, modelo$residuals)) +
+    geom_point() + geom_smooth(color = "firebrick") + geom_hline(yintercept = 0) +
+    theme_bw()
+plot2 <- ggplot(data = datos, aes(asesinatos, modelo$residuals)) +
+    geom_point() + geom_smooth(color = "firebrick") + geom_hline(yintercept = 0) +
+    theme_bw()
+plot3 <- ggplot(data = datos, aes(universitarios, modelo$residuals)) +
+    geom_point() + geom_smooth(color = "firebrick") + geom_hline(yintercept = 0) +
+    theme_bw()
+plot4 <- ggplot(data = datos, aes(heladas, modelo$residuals)) +
+    geom_point() + geom_smooth(color = "firebrick") + geom_hline(yintercept = 0) +
+    theme_bw()
+grid.arrange(plot1, plot2, plot3, plot4)
+```
+
+Ahora se testea la distribución normal de los residuos.
+```{r}
+qqnorm(modelo$residuals)
+qqline(modelo$residuals)
+```
+
+```{r}
+shapiro.test(modelo$residuals)
+```
+
+Se concluye que el análisis gráfico y la prueba, confirman la normalidad de los residuos.
+
+Cuando graficamos los residuos en función de los valores ajustados por el modelo, esperamos ver que los residuos se distribuyan aleatoriamente alrededor de cero, sin mostrar ningún patrón. Además, esperamos que la variabilidad de los residuos sea más o menos constante a lo largo del eje X. Sin embargo, si identificamos algún patrón específico en la distribución de los residuos, como una forma cónica o una mayor dispersión en los extremos, esto indica que la variabilidad de los residuos está relacionada con los valores ajustados por el modelo, lo que sugiere una falta de homocedasticidad en el mismo.
+```{r, message=FALSE}
+ggplot(data = datos, aes(modelo$fitted.values, modelo$residuals)) +
+geom_point() +
+geom_smooth(color = "firebrick", se = FALSE) +
+geom_hline(yintercept = 0) +
+theme_bw()
+```
+
+```{r}
+bptest(modelo)
+```
+
+Por lo tanto no hay evidencia de ausencia de homocedasticidad.
+
+Relación entre los predictores.
+```{r}
+corrplot(cor(dplyr::select(datos, habitantes, asesinatos,universitarios,heladas)),
+         method = "number", tl.col = "black")
+```
+
+Análisis de Inflación de la Varianza.
+```{r}
+vif(modelo)
+```
+
+El resultado anterior señala que no hay evidencia de una correlación lineal muy alta ni inflación de varianza.
+
+Autocorrelación.
+```{r}
+dwt(modelo, alternative = "two.sided")
+```
+
+El resultado anterior muestra que no existe evidencia de auto correlación.
+
+#### 5) Identificación de posibles valores atípicos o influyentes.
+
+Identificación de posibles valores atípicos.
+```{r}
+datos$studentized_residual <- rstudent(modelo)
+
+ggplot(data = datos, aes(x = predict(modelo), y = abs(studentized_residual))) +
+  geom_hline(yintercept = 3, color = "grey", linetype = "dashed") +
+  
+# se identifican en rojo observaciones con residuos estandarizados absolutos > 3
+geom_point(aes(color = ifelse(abs(studentized_residual) > 3, 'red', 'black'))) +
+  scale_color_identity() +
+  labs(title = "Distribución de los residuos studentized",
+       x = "Predicción modelo") + 
+  theme_bw() + theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+which(abs(datos$studentized_residual) > 3)
+```
+
+No se encuentran valores atípicos.
+
+```{r}
+summary(influence.measures(modelo))
+```
+
+En la tabla anterior se listan las observaciones que son significativamente influyentes en al menos uno de los predictores.
+```{r}
+influencePlot(modelo)
+```
+
+El análisis anterior muestra valores preocupantes para los valores Leverages o Distancia Cook (California y Maine). Un estudio más exhaustivo recomendaría rehacer el modelo sin dichas observaciones y comparar los resultados.
+
+#### 6) Conclusión.
+
+En conclusión el modelo de regresión lineal múltiple sería: Esperanza de  vida $=5.014e^{-05}$habitantes $- 3.001e^{−01}$asesinatos $+4.658e^{−02}$universitarios $−5.943e^{−03}$heladas. que es capaz de explicar el 73.6% de la variabilidad observada en la esperanza de vida.
+
+### Ejemplo 2
+
+Este ejmplo se ejecuta mediante una base de datos con información de 30 libros. Se conoce del peso total de cada libro, el volumen que tiene y el tipo de tapas (duras o blandas). Se quiere generar un modelo lineal múltiple que permita predecir el peso de un libro en función de su volumen y del tipo de tapas.
+```{r}
+datos <- data.frame(peso = c(800, 950, 1050, 350, 750, 600, 1075, 250, 700,
+                             650, 975, 350, 950, 425, 725),
+                    volumen = c(885, 1016, 1125, 239, 701, 641, 1228, 412, 953,
+                                929, 1492, 419, 1010, 595, 1034),
+                    tipo_tapas = c("duras", "duras", "duras", "duras", "duras", 
+                                   "duras", "duras", "blandas", "blandas",
+                                   "blandas", "blandas", "blandas", "blandas",
+                                   "blandas", "blandas"))
+head(datos, 4)
+```
+
+#### 1) Primero se analiza las correlaciones entre la variable cualitativas.
+
+```{r}
+datos$tipo_tapas <- as.factor(datos$tipo_tapas)
+pairs(x = datos)
+```
+
+```{r}
+cor.test(datos$peso, datos$volumen, method = "pearson")
+```
+
+```{r}
+ggplot(data = datos, mapping=aes(x = tipo_tapas, y = peso, color=tipo_tapas)) +
+geom_boxplot() +
+geom_jitter(width = 0.1) +
+theme_bw() + theme(legend.position = "none")
+```
+
+Con los análisis anteriores se muestra que existe una relación lineal entre la variable `peso` y  `volumen`. Además la variable `tipo_tapas` aparenta influir en el peso.
+
+#### 2) Modelo lineal multiple.
+
+```{r}
+modelo <- lm(peso ~ volumen + tipo_tapas, data = datos)
+summary(modelo)
+```
+```{r}
+confint(modelo)
+```
+
+Por lo anterior, el modelo es capaz de explicar aproximadamente el 92.7% de la variabilidad observada, en el peso. Además, por el F teste, se puede decir que la muestra fue significativa.
+
+#### 3) Elección de los predictores.
+
+En este caso solo hay dos posibles predicotres que mediante la función `summary()` se constataron como importantes.
+
+#### 4) Condiciones para la regresión lineal múltiple.
+
+Relación lineal entre los predictores numéricos y la variable dependiente:
+```{r, message=FALSE}
+ggplot(data = datos, aes(x = volumen, y = modelo$residuals)) +
+geom_point() +
+geom_smooth(color = "firebrick") +
+geom_hline(yintercept = 0) +
+theme_bw()
+```
+
+Se satisface la condición de linealidad y se observa un dato que podría ser atípico.
+
+Distribución normal de los residuos:
+```{r}
+qqnorm(modelo$residuals)
+qqline(modelo$residuals)
+```
+
+```{r}
+shapiro.test(modelo$residuals)
+```
+Por lo anterior, se concluye que la condición de normalidad no se cumple, posiblemente por el dato atípico observado anteriormente. Por lo tanto, se vuelve a correr el código sin el valor atípico.
+```{r}
+dato_at <- which.max(modelo$residuals)
+shapiro.test(modelo$residuals[-dato_at])
+```
+
+Por lo tanto, los residuos sí se distribuyen de forma normal.
+
+Variabilidad constante de los residuos:
+```{r, message=FALSE}
+ggplot(data = data.frame(predict_values = predict(modelo),
+                         residuos = residuals(modelo)),
+       aes(x = predict_values, y = residuos)) +
+    geom_point() +
+    geom_smooth(color = "firebrick", se = FALSE) +
+    geom_hline(yintercept = 0) +
+    theme_bw()
+```
+```{r}
+bptest(modelo)
+```
+
+No hay evidencias de falta de homocedasticidad. Además, dado que solo hay un predictor cuantitativo, no se puede dar colinealidad.
+
+Autocorrelación:
+```{r}
+dwt(modelo,alternative = "two.sided")
+```
+No hay evidencias de autocorrelación.
+
+#### 5) Identificación de posibles valores atípicos o influyentes
+```{r}
+outlierTest(modelo)
+```
+
+Justo como se vio anteriormente, existe un dato atípico.
+
+```{r}
+summary(influence.measures(modelo))
+```
+```{r}
+influencePlot(modelo)
+```
+
+El análisis anterior muestra la existencia de múltiples observaciones influyentes, pero ninguna preocupante bajo los valores leverage hat o distancia Cook.
+
+#### 6) Conclusión.
+ El modelo Peso $=13.91557+0.71795$volumen $+184.04727$tipotapas, es capaz de explicar el 92.7% de la variabilidad observada en el pseo de los libros.
+ 
+## b.Explique brevemente las siguientes funciones, incluyendo valores recibe y cuáles son sus salidas. 
+
+- `multi.hist` de la biblioteca `psych`: Recibe una matriz o dataframe y devuelve un plot con multiples histogramas para cada variable. Además, puede representar distribuciones de densidad para cada gráfico.
+- `ggpairs` de la biblioteca `GGally`: Esta función recibe un dataframe con variables continuas o categoricas y devuleve un gráfico que contiene las correlaciones encima de la diagonal, por debajo los diagramas de dispersión entre las variables continuas, en la diagonal los gráficos de densidad de las variables continuas y en los lados los histogramas y box plots de la combinación entre variables continuas y categóricas.
+- Función `Step` de la sección 3 del ejemplo 1: Esta función permite encontrar el mejor modelo basado en AIC utilizando a elección el método forward, backward o moxto. Esta función recibe un modelo el cual es un objeto de tipo `lm` o `glm`, y devuelve el modelo seleccionado.
+- `Confint` : Recibe un objeto de tipo modelo y devuelve una matriz o vector con los limites superior e inferior de confianza para cada parámetro.
+- `Corrplot` de la biblioteca `corrplot`: Esta función recibe una matriz de correlaciones y devuelve un gráfico de dichas correlaciones.
+- `Dwt` de la biblioteca `car`: Esta función recibe una serie de tiempo univariada o multivariada (vectores numéricos, matrices y dataframes son también aceptados) y calcula los coeficientes de la transformada wavelet discretaDevuelve. Devuelve un objeto de tipo `dwt` con información respecto a la autocorrelación.
+- `InfluencePlot`: Esta función recibe un modelo lineal y retorna un gráfico de "burbujas" de los residuos de Studentized frente a los valores hat, con las áreas de los círculos que representan las observaciones proporcionales al valor Distancia de Cook. 
+- `outlierTest` de la biblioteca `car`: Esta función recibe un modelo de regresión lineal e informa de los valores atípicos basado en los p-valores de Bonferroni.
+- `influence.measure`: Esta función se utiliza para calcular algunos de los diagnósticos de regresión para modelos lineales y lineales generalizados. Recibe un modelo lineal y retorna objeto que al pasarlo por la función `summary`, revela información relevante sobre la influencia de las observaciones.
+
+## c.Explique los test incluyendo cual es la hipótesis nula.  
+
+- Shapiro-Wilk para normalidad: Esta prueba estadística se utiliza para determinar si un conjunto de datos proviene de una distribución normal, para ello se establecen las hipótesis: $H_{0}:$ La distribución es normal y $H_{1}:$ La distribución no es normal. Al realizar la prueba y dado un nivel de significancia, el p-valor arrojado indicará si se rechaza la hipotesis nula ($H_{0}$) o sí, por lo contrario, se acepta.
+
+- Studentized Breusch-Pagan para homocedasticidad: Esta prueba se implementa para corroborar la homocedasticidad al analizar si la varianza estimada de los residuos de una regresión dependen de los valores de las variables independientes. En este test las hipótesis son: $H_{0}:$ Los errores tiene varianza constante y $H_{1}:$ Los errores no tiene varianza constante.
+Además, como en el test anterior dado un nivel de significancia, el p-valor arrojado podrá o no rechazar la hipótesis nula.
+
+# Parte 2 
+
+```{r}
+state.x77=as.data.frame(state.x77)
+head(state.x77)
+```
+
+## 1.Cálcule la matriz de Correlaciones de la base de datos states.x77
+
+```{r}
+matriz_cor <- cor(state.x77)
+matriz_cor
+```
+
+## 2. Genere tres modelos lineales usando la función lm de R para:
+
+### Modelo 1: Murder ~ Population
+
+```{r}
+model1 <- lm(Murder ~ Population, data = state.x77)
+summary(model1)
+
+```
+
+### Modelo 2: Murder ~ Illiteracy
+```{r}
+model2 <- lm(Murder ~ Illiteracy, data = state.x77)
+summary(model2)
+
+```
+
+### Modelo 3: Murder ~ Population + Illiteracy
+```{r}
+model3 <- lm(Murder ~ Population + Illiteracy, data = state.x77)
+summary(model3)
+```
+
+## 3. Represente gráficamente los gráficos de dispersión correspondientes, las rectas de mínimos cuadrados para los tres modelos anteriores
+de mínimos cuadrados para los tres modelos anteriores.
+
+```{r}
+# Gráfico de dispersión y recta de mínimos cuadrados para el modelo 1: Murder ~ Population
+plot(state.x77$Population, state.x77$Murder, main = "Murder vs Population", xlab = "Population", ylab = "Murder")
+abline(model1, col = "red")
+
+
+```
+
+```{r}
+# Gráfico de dispersión y recta de mínimos cuadrados para el modelo 2: Murder ~ Illiteracy
+plot(state.x77$Illiteracy, state.x77$Murder, main = "Murder vs Illiteracy", xlab = "Illiteracy", ylab = "Murder")
+abline(model2, col = "blue")
+
+
+```
+
+
+```{r}
+# Gráfico de dispersión y recta de mínimos cuadrados para el modelo 3: Murder ~ Population + Illiteracy
+
+# Crear una cuadrícula de valores para Illiteracy y Population
+illiteracy_grid <- seq(min(state.x77$Illiteracy), max(state.x77$Illiteracy), length.out = 20)
+population_grid <- seq(min(state.x77$Population), max(state.x77$Population), length.out = 20)
+grid <- expand.grid(Illiteracy = illiteracy_grid, Population = population_grid)
+
+# Calcular los valores predichos de Murder para cada combinación de Illiteracy y Population
+predictions <- predict(model3, newdata = grid)
+
+# Calcular los valores predichos de Murder para los datos originales
+predictions_original <- predict(model3)
+
+# Coeficientes del plano de mínimos cuadrados
+intercept <- coef(model3)[1]
+slope_population <- coef(model3)[2]
+slope_illiteracy <- coef(model3)[3]
+
+# Calcular los valores de Murder para la recta de mínimos cuadrados
+murder_line <- intercept + slope_population * grid$Population + slope_illiteracy * grid$Illiteracy
+
+# Crear el gráfico 3D con plotly
+scatter_plot <- plot_ly(x = grid$Illiteracy, y = grid$Population, z = predictions, type = "surface")
+scatter_plot <- add_trace(scatter_plot, x = state.x77$Illiteracy, y = state.x77$Population, z = state.x77$Murder, mode = "markers", type = "scatter3d", marker = list(size = 5))
+
+# Agregar plano de mínimos cuadrados
+scatter_plot <- add_trace(scatter_plot, x = grid$Illiteracy, y = grid$Population, z = murder_line, mode = "lines", type = "scatter3d", line = list(color = "blue", width = 3))
+
+# Etiquetas y título
+scatter_plot <- layout(scatter_plot, scene = list(xaxis = list(title = "Illiteracy"), yaxis = list(title = "Population"), zaxis = list(title = "Murder")), title = "Murder vs Population + Illiteracy")
+
+# Mostrar el gráfico
+scatter_plot
+
+```
+
+## 4. Evalue para el modelo Murder ~ Population las hipótesis de homocedasticidad, normalidad de errores y ausencia de puntos influyentes o atípicos.
+
+```{r}
+residuos <- residuals(model1)
+plot(residuos)
+```
+
+### Homocedasticidad
+
+```{r}
+# Prueba Breusch-Pagan para la homocedasticidad
+bptest(model1)
+```
+Como el valor p (0.2317) es mayor que el nivel de significancia típico de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de homocedasticidad.Por ende, según esta prueba, el modelo Murder ~ Population cumple con el supuesto de homocedasticidad.
+
+### Normalidad de errores
+
+```{r}
+# Prueba Shapiro-Wilk para la Normalidad
+shapiro.test(residuos)
+```
+Dado que el valor p (0.0642) es mayor que el nivel de significancia típico de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de normalidad. Por lo tanto, según esta prueba, los residuos del modelo parecen seguir una distribución normal.
+
+```{r}
+# Prueba Kolmogorov-Smirnov para la Normalidad
+lillie.test(residuos)
+```
+Dado que el valor p (0.5801) es mayor que el nivel de significancia comúnmente utilizado de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de normalidad. Por lo tanto, según esta prueba, los residuos del modelo parecen seguir una distribución normal.
+
+```{r}
+# Prueba Jarque Bera para la Normalidad
+jarque.bera.test(residuos)
+```
+Dado que el valor p (0.2721) es mayor que el nivel de significancia típicamente utilizado de 0.05, no hay suficiente evidencia para rechazar la hipótesis nula de que los datos provienen de una distribución normal. Por lo tanto, en este caso, los datos podrían considerarse aproximadamente normales según el test de Jarque-Bera.
+
+### Puntos influyentes o atípicos 
+
+```{r}
+qqnorm(residuos)
+```
+
+```{r}
+num_bins <- 30
+hist(residuos, breaks = num_bins, col = "skyblue", main = "Histograma de Residuos", xlab = "Residuos")
+```
+
+```{r}
+mediaRes <- mean(residuos)
+desRes <- sd(residuos)
+
+valorRefAtipD <- mediaRes+2*desRes
+valorRefAtipI <- mediaRes-2*desRes
+
+atipDerecha <- residuos[residuos > valorRefAtipD]
+atipIzquierda <- residuos[residuos < valorRefAtipI]
+
+# Imprime los residuos atípicos
+print("Residuos atípicos en el extremo derecho:")
+print(atipDerecha)
+
+print("Residuos atípicos en el extremo izquierdo:")
+print(atipIzquierda)
+```
+
+```{r}
+# Prueba de los residuos estandarizados
+residuos_estandarizados <- residuos / sd(residuos)
+valores_atipicos_residuos <- which(abs(residuos_estandarizados) > 2)  # Umbral común: 2 desviaciones estándar
+print(valores_atipicos_residuos)
+```
+
+```{r}
+outlier_test <- outlierTest(model1)
+print(outlier_test)
+```
+```{r}
+plot(model1)
+```
+Según los gráficos y pruebas anteriores, hay evidencia de al menos un valor atípico (Alabama) por la derecha.
+
+```{r}
+influencePlot(model1)
+```
+
+Además según lo anteior, se presentan ciertos valores influyentes. 
+
+## 5. Estima las tasas de homicidio para niveles de Illiteracy de 0.25, 1.2, 2.1, 3.0, 4.0. en el segundo modelo.
+
+```{r}
+
+coeficientes <- coef(model2)
+
+niveles_illiteracy <- c(0.25, 1.2, 2.1, 3.0, 4.0)
+
+tasas_homicidioE <- coeficientes[1] + coeficientes[2] * niveles_illiteracy
+
+resultado <- data.frame(Illiteracy = niveles_illiteracy, Tasa_Homicidio_Estimada = tasas_homicidioE)
+print(resultado )
+```
+
+# Parte 3
+
+Se carga la base de datos correspondiente
+
+```{r }
+Y = c(47.83,59.51,50.38,53.24,47.26,50.52)
+Ynames = c("obs1","obs2","obs3","obs4","obs5","obs6")
+names = c("b0", "tasaFlujoGas1", "tasaFlujoGas2", "aperturaBoq", "tempGas")
+
+X = matrix(c(1, 124.17,134.07,23.32,210.11, 
+    1,149.46,142.21,41.82,229.67,
+    1,131.65,146.62,21.14,231.10,
+    1,139.49,136.16,45.79,206.03,
+    1,113.03,125.41,41.51,222.67,
+    1,134.57,165.84,32.42,219.59),nrow=6,byrow = TRUE,dimnames=list(Ynames,names))
+
+X2 = data.frame(cbind(Y,X[,-1]))
+```
+
+## a. Estime un modelo de regresión lineal, con la función lm() para la variable X2.
+
+```{r}
+regresion_lineal = lm(Y ~ ., data = X2)
+summary(regresion_lineal)
+```
+
+## b. La función lm() estima la inversa de XtX con base en el proceso de descomposición QR, de Gram–Schmidt, realice un breve descripción de este proceso y verifique usando la función qr.solve () que los estimadores del resultado de la regresión lineal de punto a son los mismos.
+
+El proceso de descomposición QR se desarrolla de la siguiente forma:
+
+Sea $X$ una matriz nxm . Si consideramos las m columnas de $X$, denotadas por $x_j$ 
+podemos obtener una base ortogonal de vectores unitarios $q_j$ tales que:
+
+Si $X$ tiene rango completo (es decir, sus columnas son linealmente independientes),
+podemos relacionar los vectores $x_j$ y $q_j$ mediante la ecuación
+
+$x_k = r_{1k}q_1 + r_{2k}q_2 + r_{3k}q_3 + ... + r_{kk}q_k.$, con k = 1, ...,m
+
+Como los vectores $q_j$ son ortogonales, los coeficientes vienen
+dados por
+
+$rij = q_i*a_j$ con $i \not = j$
+
+Esto permite escribir
+
+$X = QR$ , donde $Q$ es una matriz nxm que satisface que $QQ = I$. Y, $R$ es una matriz
+mxm triangular superior.
+
+
+Si $X$ no tiene rango completo, entonces basta con seleccionar $q_k$
+de manera tal que sea ortogonal a $(q_1, . . . , q_{k-1})$. De esta manera también
+se puede escribir $X = QR$.
+
+Finalmente, la inversa de la matriz $X^tX$ se puede calcular mediante la 
+descomposición $QR$ de la matriz $X$.
+
+
+**Verificación usando qr.solve()**
+
+Empleando la función qr.solve se obtiene lo siguiente:
+```{r}
+QR = qr(X)
+qr.solve(QR, Y)
+```
+Como se puede observar, son los mismos valores de beta que brinda
+la función lm en el punto a.
+
+## c. Usando una matriz pseudo-inversa (Moonre-Penrose) y según lo visto en clases, reconstruya los valores de la regresión del punto a.
+
+i.  ***Estimadores***
+
+    Primeramente, se calcula la matriz ortogonal
+
+```{r} 
+X_matriz = as.matrix(X) 
+XTX = t(X_matriz) %*% X_matriz 
+XTXI = ginv(XTX) 
+XTXI
+```
+
+    La solución de los betas es la siguiente:
+
+```{r} 
+Betas = XTXI %*% t(X_matriz) %*% Y
+Betas
+```
+
+    Los cuales son los mismo que los obtenidos mediante la función lm.
+
+ii. ***Std error de los estimadores***
+
+    Como primer paso, se calcula la matriz de covarianzas
+
+```{r} 
+Var_Betas = vcov(regresion_lineal) 
+Var_Betas
+```
+
+    Posteriormente, se obtiene las std error de los betas
+
+```{r} 
+errores = c()
+
+for (i in 1: 5) {
+  errores[i] = sqrt(Var_Betas[i,i]) 
+}  
+
+errores_Betas = matrix(errores, dimnames = list(names, "Std error" )) 
+errores_Betas
+```
+
+    Como se puede observar, son iguales a los errores calculados con la
+    función lm.
+
+iii. ***T-value***
+
+     Se procede a calcular el los T-valores de cada variable:
+
+```{r} 
+t_valor_matriz = c() 
+
+for (i in 1: 5) {  
+  t_valor_matriz[i] = Betas[i,]/errores_Betas[i,] 
+} 
+
+t_valores = matrix(t_valor_matriz,dimnames = list(names, "T-value" ))
+t_valores
+```
+
+iv. ***Pr(\>\|t\|)***
+
+    Con lo anterior, se obtiene que las probabilidades son:
+
+    ```{r} 
+probabilidades = c() 
+    
+for (i in 1: 5) {
+    probabilidades[i] = 2*(1-pt(abs(t_valor_matriz[i]), 1)) 
+} 
+    
+P_T = matrix(probabilidades,dimnames = list(names, "Pr(>|t|)" )) 
+P_T
+    ```
+
+    De tal manera, comparando con lo obtenido por lm, se tienen los
+    mismos resultados.
+
+v.  ***Residual estándar error.***
+
+    Primero, se obtiene la matriz de proyección P
+
+```{r} 
+P = X %*% XTXI %*% t(X)
+P
+```
+
+    Luego, se calcula la matriz IP
+
+```{r} 
+Id = diag(rep(1,6)) 
+IP = Id-P
+```
+
+    Tercero, se obtiene la SSE (suma de los cuadrados residuales)
+
+```{r} 
+SSE=t(Y)%*%IP%*%Y
+```
+
+    Finalmente, se calcula el error residual estándar
+
+```{r} 
+error_residual = sqrt(SSE/(6-5)) 
+error_residual
+```
+
+    La cual es la misma que da la función lm.
+
+vi. ***R cuadrado***
+
+    Primeramente, se obtiene la SST (total de las sumas la cuadrado)
+
+```{r} 
+SST = t(Y)%*%(Y) 
+SST
+```
+
+    Se centran las observaciones, por lo que se tiene el SSTC (SST
+    centrado)
+
+```{r} 
+y_mean = mean(Y) 
+SSTC = SST-6*y_mean^2 
+SSTC
+```
+
+    Por consiguiente, el R cuadrado es:
+
+```{r} 
+R2= 1-SSE/SSTC 
+R2
+```
+
+    que es el mismo que el dado por la función lm.
+
+vii. ***R cuadrado Ajustado***
+
+```{r} 
+R2adj = 1-((6-1)/(6-5))*(1-R2) 
+R2adj
+```
+
+     Es posible identificar que es igual al calculado por la función lm.
+
+viii. ***F-estadistico y su p-value.***
+
+      Para obtener el F-estadístico, es necesario conocer sus grados de
+      libertad. Se sabe que posee t y N-r = 1 grados de libertad.
+      Entonces, queda pendiente conocer t.
+
+      Por medio de las probabilidades Pr(\>\|t\|), se puede identificar
+      que la variable tasaFlujoGas1 posee la menor probabilidad y por
+      ende se considera como una variable significativa junto a B0, con
+      respecto a las otras. Dado que t es la cantidad de variables que
+      no aportan información significativa, se tiene que t = 4.
+
+      De tal manera, el estadístico F es:
+
+```{r} 
+F = (R2/4)/(1-R2) 
+F
+```
+
+      Finalmente, el p-valor corresponde a :
+
+```{r} 
+p_valor = 1-pf(F,4,1) 
+p_valor
+```
+
+      Como se puede ver,ambos valores son los mismos que los dados por
+      la función lm.
+
+## d. Realice una prueba de contraste para determinar si se acepta o no la hipótesis que Tasa Flujo Gas 2 + aperturaBoq = 0.
+
+Se realiza una prueba de contraste con las siguientes hipótesis:
+
+-   $H_0 : B2 + B3 = 0$
+-   $H_1 : B2 + B3 \not = 0$
+
+Primero, se calcular el error:
+```{r}
+error_suma =  sqrt(0.0022631774 + 0.003522361 +2*0.001240270)
+error_suma
+```
+
+Así, el T-valor es:
+```{r}
+t_valor_suma = (-0.07329 + 0.08865)/error_suma
+t_valor_suma
+```
+
+Finalmente, se calcula el p-valor para determinar si se rechaza o no la
+hipótesis nula. Para este, tenemos r = 5 y N = 6. De tal manera, el
+p-valor es:
+
+```{r}
+p_valor_suma = 2*(1-pt(t_valor_suma, 6-5))
+p_valor_suma
+```
+
+Por tanto, con un nivel de confianza del 95%, se acepta la hipótesis
+nula.

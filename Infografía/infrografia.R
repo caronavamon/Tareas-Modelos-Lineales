@@ -1,15 +1,22 @@
 library(readr)
+library(readxl)
 install.packages("ipred")
 install.packages("caret")
 library(caret)
+library(pROC)
+library(ggplot2)
 
-datos <- read_delim("C:/Users/Caro/Downloads/Student Mental health.csv", 
-                    delim = ";", escape_double = FALSE, trim_ws = TRUE)
+datos <- read_excel("Salud mental estudiantes.xlsx")
 datos <- datos[, -c(1,6)]
 datos <- as.data.frame(lapply(datos, as.factor))
 
-modelo.logit <- glm(Do.you.have.Depression. ~ ., data = datos, family = "binomial")
+colnames(datos) <- c("Género", "Edad", "Carrera", "Año de carrera", 
+                     "Estado civil", "Depresión", "Ansiedad", 
+                     "Ataques de pánico", "Buscar especialista")
+
+modelo.logit <- glm(Depresión ~ ., data = datos, family = "binomial")
 summary(modelo.logit)
+
 
 # Análisis odd ratios
 
@@ -43,7 +50,7 @@ predicciones <- predict(modelo.logit, datos, type = "response")
 predicciones_clases <- ifelse(predicciones > 0.5, "Yes", "No")
 
 # Crear la matriz de confusión
-confusion_matrix <- confusionMatrix(as.factor(predicciones_clases), datos$Do.you.have.Depression.)
+confusion_matrix <- confusionMatrix(as.factor(predicciones_clases), datos$Depresión)
 
 # Ver la matriz de confusión
 print(confusion_matrix)
@@ -59,4 +66,5 @@ abline(a = 0, b = 1, col = "blue")  # Línea de identidad (y = x)
 # Agregar el punto aleatorio al gráfico
 points(1-0.8857,0.9692, col = "red", pch = 19)
 
-# Dado que el punto Roc está por encima de la recta, significa que es un buen modelo.
+# Dado que el punto Roc está por encima de la recta, significa que es un buen 
+# modelo.

@@ -7,6 +7,7 @@ library(pROC)
 library(ggplot2)
 library(ROCR)
 library(precrec)
+library(ggrepel)
 
 datos <- read_excel("Salud mental estudiantes.xlsx")
 datos <- datos[, -c(1,6)]
@@ -55,9 +56,12 @@ tpr_best <- best_thresh$sensitivity
 
 # Añadir el punto al gráfico
 p[[1]] + geom_point(aes(x = fpr_best, y = tpr_best), color = "red", size = 1) +
+  geom_text(aes(x = fpr_best, y = tpr_best, label = sprintf("(%.2f, %.2f)", fpr_best, tpr_best)), 
+                  size = 3, nudge_y = -0.05, nudge_x = 0.20) +
   ggtitle("Curva ROC") +
   xlab("1 - Especificidad") +
   ylab("Sensibilidad")
   
 # Dado que el punto Roc está por encima de la recta, significa que es un buen 
 # modelo.
+

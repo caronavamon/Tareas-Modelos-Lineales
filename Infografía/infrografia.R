@@ -9,7 +9,7 @@ library(ggrepel)
 
 #-----------------------------------Datos---------------------------------------
 
-datos <- read_excel("Salud mental estudiantes.xlsx")
+datos <- read_excel("Infografía/Salud mental estudiantes.xlsx")
 datos <- datos[, -c(1,6)]
 
 colnames(datos) <- c("Género", "Edad", "Carrera", "Año de carrera", 
